@@ -120,14 +120,18 @@ epsilon = 0.1
 # Plotting metrics
 all_epochs = []
 all_penalties = []
+frames = [] # for animation
+total_reward_list = []
+avg_reward = [0]
+total_reward, avg_reward_tot, avg_reward_episodes, total_epochs, episodes = 0,0,0,0,0
 
 for i in range(1, 100001):
     state = env.reset()
     
     # Setting initial values
-    epochs, penalties, reward, = 0,0,0
+    epochs, penalties, reward = 0,0,0
     done = False
-    
+
     # Decide wether to pick a random action or exploit the
     # already computed Q-values (comparing to epsilon)
     while not done:
@@ -155,14 +159,53 @@ for i in range(1, 100001):
         if reward == -10:
             penalties +=1
         
+
+        # Put each rendered frame into dict for animation
+        frames.append({
+            'frame': env.render(mode='ansi'),
+            'state': state,
+            'action': action,
+            'reward': reward,
+            'avg_reward_tot': avg_reward_tot,
+            'avg_reward': avg_reward_episodes
+            }
+        )
+        
         state = next_state
         epochs +=1
+        total_epochs+=1
+        total_reward+=reward
+        total_reward_list.append(reward)
+        avg_reward_tot = total_reward/total_epochs
+        avg_reward_episodes = avg_reward[episodes]
+
     
-    # Clear output after 100 epochs
+
+
+    # Clear output after 100 episodes
     if i%100 ==0:
         clear_output(wait=True)
         print(f"Episode: {i}")
-
+        episodes +=1
+        avg_reward.append(sum(total_reward_list)/len(total_reward_list))
+        total_reward_list = []
+        
+        
+ 
+       
+def print_frames(frames):
+    for i, frame in enumerate(frames):
+        clear_output(wait=True)
+        print(frame['frame'].getvalue())
+        print(f"Timestep: {i + 1}")
+        print(f"State: {frame['state']}")
+        print(f"Action: {frame['action']}")
+        print(f"Reward: {frame['reward']}")
+        print(f"Avg. reward (100 episodes): {frame['avg_reward']}")
+        print(f"Avg. total reward: {frame['avg_reward_tot']}")
+        sleep(.1)
+        
+print_frames(frames[len(frames)-1000:len(frames)])
 print("Training finished.\n")
 
 
