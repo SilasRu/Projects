@@ -50,9 +50,8 @@ def get_column(dataframe, index):
     return dataframe[index]
 
 # =============================================================================
-# Initializing the app
+# Layout
 # =============================================================================
-
 app = dash.Dash()
 
 # Boostrap CSS. for layout structure
@@ -67,54 +66,89 @@ app.layout = html.Div(
                 html.H1(
                     children='Reinforcement Learning',
                     style={
-                        'marginTop': 10},
+                        'marginTop': 10,
+                        'marginBottom': 0},
                     className='nine columns'),
                 # Logo, top right
                 html.Img(
-                    src="https://pbs.twimg.com/profile_images/710845774716911616/PyV-I0_8_400x400.jpg",
+                    src="https://www.prophysics.ch/wp-content/uploads/2017/07/zhaw-logo-inner.png",
                     className='three columns',
                     style={
                         'height': '15%',
                         'width': '15%',
                         'float': 'right',
-                        'position': 'relative'},)
-                ], className="row"),   
-        #### 2.Row ####                
-        html.Div([
-                # Dropdown, top left
-                dcc.Dropdown(
-                        id='stock_dropdown',
-                        options=[{'label': df, 'value': df} for df in dataframes],
-                        value='',
-                        className= 'three columns'),
-                dcc.Dropdown(
-                        id='column_dropdown',
-                        options=[{'label': column, 'value': column} for column in indexes],
-                        value='',
-                        className= 'three columns'),
-                # Infobox, top right
-                html.Div(
-                    children= 'Select the stock and index for visualization',
-                    className='six columns',
-                    style={
-                        'float': 'right'})
+                        'position': 'relative',
+                        'marginBottom': 0},)
                 ], className="row"),
-        #### 3. Row ####
+        #### 2.Row #### 
         html.Div([
-            html.Div([
-                # Graph
-                dcc.Graph(
-                    id='stock_plots') 
-                    ],className= 'twelve columns'),
-            html.Div([
-                # Table
-                dt.DataTable(
-                        id='table',
-                        rows = [{}],
-                        filterable = True,
-                        sortable= True),
-                ], className= 'twelve columns')
-        ], className="row")
+            html.Div(
+                children = 'Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.',
+                    className='six columns')
+                ], className='row'),
+        html.Div([
+            dcc.Tabs(id='tabs', children=[
+# =============================================================================
+# 1. Tab
+# =============================================================================
+                dcc.Tab(label='Tab one',children=[
+                    #### 3.Row ####                
+                    html.Div([
+                            # Dropdown, top left
+                            dcc.Dropdown(
+                                    id='stock_dropdown',
+                                    options=[{'label': df, 'value': df} for df in dataframes],
+                                    value='',
+                                    className= 'three columns'),
+                            dcc.Dropdown(
+                                    id='column_dropdown',
+                                    options=[{'label': column, 'value': column} for column in indexes],
+                                    value='',
+                                    className= 'three columns'),
+                            # Infobox, top right
+                            html.Div(
+                                children= 'Select the stock and index for visualization',
+                                className='six columns',
+                                style={
+                                    'float': 'right'})
+                            ], className="row",style={'marginTop': 20}),
+                    #### 4. Row ####
+                    html.Div([
+                        html.Div([
+                            # Graph
+                            dcc.Graph(
+                                id='stock_plots') 
+                                ],className= 'twelve columns'),
+                        html.Div([
+                            # Table
+                            dt.DataTable(
+                                    id='table',
+                                    rows = [{}],
+                                    filterable = True,
+                                    sortable= True),
+                                ], className= 'twelve columns')
+                            ], className="row")
+                        ]),
+# =============================================================================
+# 2. Tab
+# =============================================================================
+             dcc.Tab(label='Tab two', children=[
+                html.Div([
+                    html.H1(
+                        children='Reinforcement Learning')
+                        ])
+                    ]),
+# =============================================================================
+# 3. Tab
+# =============================================================================
+             dcc.Tab(label='Tab three', children=[
+                html.Div([
+                    html.H1(
+                        children='Reinforcement Learning')
+                        ])
+                    ])
+                ])
+            ])
     ], className='ten columns offset-by-one')
 )
 
