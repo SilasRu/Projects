@@ -1,7 +1,7 @@
 # =============================================================================
 # Dash GUI
 # TODO: 
-# implement Trading markers
+# implement Trading markers for Training set
 # Model visualization
 # Sharpe
 # Portfolio value
@@ -14,7 +14,9 @@ import dash_table_experiments as dt
 import plotly.graph_objs as go
 import pandas as pd
 import os
+import pickle
 from dash.dependencies import Input, Output
+from itertools import chain
 
 # =============================================================================
 # Importing Datasets
@@ -26,18 +28,24 @@ MSFT_df = pd.read_csv(filedir + '\\daily_MSFT.csv')
 QCOM_df = pd.read_csv(filedir + '\\daily_QCOM.csv')
 
 portfolio_val_train = pd.read_csv(filedir + '\\portfolio_val_train.csv')
-portfolio_val_train = portfolio_val_train.rename(index=str, columns={'0': 'IBM_stock','1': 'MSFT_stock', '2': 'QCOM_stock', 
+portfolio_val_train = portfolio_val_train.rename(index=str, columns={'0': 'IBM_ammount','1': 'MSFT_ammount', '2': 'QCOM_ammount', 
                                               '3': 'Cash', '4': 'Portfolio_val', '5': 'Perc_diff' })
 portfolio_val_test = pd.read_csv(filedir + '\\portfolio_val_test.csv')
-portfolio_val_test = portfolio_val_test.rename(index=str, columns={'0': 'IBM_stock','1': 'MSFT_stock', '2': 'QCOM_stock', 
+portfolio_val_test = portfolio_val_test.rename(index=str, columns={'0': 'IBM_ammount','1': 'MSFT_ammount', '2': 'QCOM_ammount', 
                                               '3': 'Cash', '4': 'Portfolio_val', '5': 'Perc_diff' })
 
 train_data = pd.read_csv(filedir + '\\train_data.csv')
 train_data = train_data.transpose()
 train_data = train_data.rename(index= str, columns={0: 'IBM', 1: 'MSFT', 2: 'QCOM'})
-test_data = pd.read_csv(filedir + '\\train_data.csv')
+test_data = pd.read_csv(filedir + '\\test_data.csv')
 test_data = test_data.transpose()
 test_data = test_data.rename(index= str, columns={0: 'IBM', 1: 'MSFT', 2: 'QCOM'})
+
+action_x = pickle.load(open(filedir +'\\action_x.p', 'rb'))
+action_y = pickle.load(open(filedir +'\\action_y.p', 'rb'))
+b, h, s = action_x
+b_pos, h_pos, s_pos = action_y
+
 
 
 
@@ -51,6 +59,13 @@ indexes = {'open': 'open',
            'close': 'close',
            'volume': 'volume'}
 
+model_data = {'train': train_data,
+             'test': test_data}
+
+portfolio_val = {'train': portfolio_val_train,
+                 'test': portfolio_val_test}
+
+
 
 # Selected Dataframe
 def get_data_object(user_selection):
@@ -58,6 +73,12 @@ def get_data_object(user_selection):
 
 def get_column(dataframe, index):
     return dataframe[index]
+
+def get_model_data(user_selection):
+    return model_data[user_selection]
+
+def get_portfolio_val(user_selection):
+    return portfolio_val[user_selection]
 
 # =============================================================================
 # Layout
@@ -144,63 +165,54 @@ app.layout = html.Div(
 # 2. Tab
 # =============================================================================
              dcc.Tab(label='Performance Metrics', children=[
-                    #### 3.Row ####                
+                    #### 3.Row ####
+                    html.Div([
+                            dcc.RadioItems(
+                                id= 'train_test_button',
+                                options=[
+                                    {'label': 'Training', 'value': 'train'},
+                                    {'label': 'Test', 'value': 'test'}],
+                                value='train',labelStyle={'display': 'inline-block'})
+                                    ],className='two columns'),
+                    html.Div([
+                        dcc.Checklist(
+                                id= 'trading_markers_checkbox',
+                                options=[
+                                    {'label': 'Trading markers', 'value': 'checked'}],
+                                values=''
+                            )], className= 'two columns'),
                     html.Div([
                             # Infobox, top right
                             html.Div(
-                                children= 'Select the stock and index for visualization',
-                                className='six columns',
-                                style={
-                                    'float': 'right'})
+                                children= '',
+                                className='eight columns')
                             ], className="row",style={'marginTop': 20}),
                     #### 4. Row ####
                     html.Div([
                         html.Div([
                             # Graph
-                            dcc.Graph(
-                                id='stock_ammount',
-                                figure={    
-                                    'data':[                                        
-                                        {'x': train_data.index, 'y': train_data['IBM'],
-                                         'type': 'line', 'name': 'IBM'},
-                                        {'x': train_data.index, 'y': train_data['QCOM'],
-                                         'type': 'line', 'name': 'QCOM','visible': 'legendonly'},
-                                        {'x': train_data.index, 'y': train_data['MSFT'],
-                                         'type': 'line', 'name': 'MSFT', 'visible': 'legendonly'},
-                                        {'x': portfolio_val_train.index, 'y': portfolio_val_train['IBM_stock'],
-                                         'type': 'scatter','opacity': 0.4, 'name': 'IBM_stock'},
-                                        {'x': portfolio_val_train.index, 'y': portfolio_val_train['QCOM_stock'],
-                                         'type': 'scatter','opacity': 0.4, 'name': 'QCOM_stock','visible': 'legendonly'},
-                                        {'x': portfolio_val_train.index, 'y': portfolio_val_train['MSFT_stock'],
-                                         'type': 'scatter','opacity': 0.4, 'name': 'MSFT_stock','visible': 'legendonly'}
-                                         ]
-                                        })
-                                        
-                                ],className= 'twelve columns'),
-#                        html.Div([
-#                            # Table
-#                            dt.DataTable(
-#                                    id='table',
-#                                    rows = [{}],
-#                                    filterable = True,
-#                                    sortable= True),
-#                                ], className= 'twelve columns')
-                            ], className="row")
-                    ]),
+                            dcc.Graph(id='train_test_graph')
+                                ],className= 'twelve columns')           
+                            ], className="row"),
+                    html.Div([
+                        html.Div([
+                            dcc.Graph(id= 'portfolio_graph')
+                                ],className = 'twelve columns')  
+                            ], className = 'row')
+                        ]),
 # =============================================================================
 # 3. Tab
 # =============================================================================
              dcc.Tab(label='Information', children=[
                 html.Div([
                     html.H1(
-                        children='Reinforcement Learning')
+                        children='Reinforcement Learning'),
                         ])
                     ])
                 ])
             ])
     ], className='ten columns offset-by-one')
 )
-
 # =============================================================================
 # Callbacks
 # =============================================================================
@@ -213,17 +225,59 @@ def update_table(user_selection):
 
 @app.callback(
         Output('stock_plots', 'figure'),
-        [Input('stock_dropdown', 'value'),
+        [Input('stock_dropdown', 'value'),  
         Input('column_dropdown', 'value')])
-def update_figure(stock_selection, column_selection):
+def update_stock_graph(stock_selection, column_selection):
     df = get_data_object(stock_selection)
     column = get_column(df, column_selection)
     return {'data': 
-                [{'x': df.timestamp, 'y': column, 
-                  'type': 'line', 'name': stock_selection}]}
-                    
+                [{'x': df.timestamp, 'y': column, 'type': 'line',
+                  'name': stock_selection}]}
+    
+@app.callback(
+        Output('train_test_graph', 'figure'),
+        [Input('train_test_button', 'value'), Input('trading_markers_checkbox', 'values')])
+def update_train_test_button(button_selection, checkbox_selection):
+    df = get_model_data(button_selection)
+    n_stock = df.shape[1]
+    portfolio = get_portfolio_val(button_selection)
+    
+    # Data and Marker traces
+    model_data =  [{'x': df.index, 'y': df[i],
+                    'type': 'line', 'name': i}for i in df.columns]
+    buy_markers = [{'x': b['buy_{}'.format(i)],'y': b_pos['buy_pos_{}'.format(i)],'type': 'scatter',
+                    'mode': 'markers','marker':{'symbol':'triangle-up', 'size':10, 'color': 'green'},
+                    'name': df.columns[i]}for i in range(n_stock)]
+    sell_markers= [{'x': s['sell_{}'.format(i)],'y': s_pos['sell_pos_{}'.format(i)],'type': 'scatter',
+                    'mode': 'markers','marker':{'symbol':'triangle-down', 'size':10, 'color': 'red'},
+                    'name': df.columns[i]}for i in range(n_stock)]
+    ammount_of_stock = [{'x': portfolio.index, 'y': portfolio[column],
+                         'type': 'line', 'name': column, 'visible':'legendonly'}for column in portfolio.columns[0:3]]
+    
+    # Checkbox selection and corresponding plot
+    if checkbox_selection==['checked'] and button_selection=='test':
+        data = list(chain.from_iterable((model_data, ammount_of_stock, buy_markers, sell_markers)))
+        return {'data': data, 'layout': {'title': '<b>{} datasets</b>'.format(button_selection), 'legend': {'orientation':'h'},
+                                         'xaxis':{'range': (0,len(df))}}}
+    else:
+        data = list(chain.from_iterable((model_data, ammount_of_stock)))
+        return {'data':data, 'layout': {'title': '<b>{} datasets</b>'.format(button_selection), 'legend': {'orientation':'h'}}}
 
-
-
+@app.callback(
+        Output('portfolio_graph', 'figure'),
+        [Input('train_test_button', 'value')])
+def update_portfolio_graph(button_selection):
+        portfolio = get_portfolio_val(button_selection)
+        # Data traces
+        portfolio_value = [{'x': portfolio.index, 'y': portfolio['Portfolio_val'],
+                        'type': 'line', 'name': 'Portfolio_value'}] 
+        data = portfolio_value
+        return {'data': data, 'layout': {'title': '<b>Portfolio value</b>','legend': {'orientation':'h', 'name': 'test'},
+                                        'shapes':[{'type':'line', 'x0': 0, 'y0': 20000,
+                                                   'x1': len(portfolio.index), 'y1': 20000,
+                                                   'line':{'color': 'red','dash': 'dashdot'}
+                                                 }]
+                                         }
+                }
 if __name__ == '__main__':
     app.run_server(debug=True)

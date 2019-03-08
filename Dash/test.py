@@ -1,120 +1,68 @@
 # =============================================================================
 # Dash GUI
 # TODO: 
-#
-#
-#
-#
+# implement Trading markers
+# Model visualization
+# Sharpe
+# Portfolio value
 # =============================================================================
 
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table_experiments as dt
+import plotly.graph_objs as go
 import pandas as pd
 import os
+import pickle
+from matplotlib import pyplot as plt
 from dash.dependencies import Input, Output
 
 # =============================================================================
 # Importing Datasets
 # =============================================================================
-filedir = os.path.abspath('D:\\GitHub\\Projects\\Dash\\Data')
-IBM_df_name = 'daily_IBM.csv'
-MSFT_df_name = 'daily_MSFT.csv'
-QCOM_df_name = 'daily_QCOM.csv'
+filedir = os.path.abspath('D:\\GitHub\\Projects\\Dash\\Data\\')
 
-IBM_filepath = os.path.join(filedir, IBM_df_name)
-MSFT_filepath = os.path.join(filedir, MSFT_df_name)
-QCOM_filepath = os.path.join(filedir, QCOM_df_name)
-
-IBM_df = pd.read_csv(IBM_filepath)
-MSFT_df = pd.read_csv(MSFT_filepath)
-QCOM_df = pd.read_csv(QCOM_filepath)
-
-dataframes= {'IBM': IBM_df,
-             'MSFT': MSFT_df,
-             'QCOM': QCOM_df}
-
-# Selected Dataframe
-def get_data_object(user_selection):
-    return dataframes[user_selection]
-
-# =============================================================================
-# Initializing the app
-# =============================================================================
-
-app = dash.Dash()
-
-# Boostrap CSS. for layout structure
-app.css.append_css({'external_url': 'https://codepen.io/amyoshino/pen/jzXypZ.css'})
-
-app.layout = html.Div(
-    # 12 Columns (offset by one)
-    html.Div([
-        #### 1.Row ####
-        html.Div([
-                # Title, top left
-                html.H1(children='Reinforcement Learning',
-                        className='nine columns'),
-                # Logo, top right
-                html.Img(
-                    src="https://pbs.twimg.com/profile_images/710845774716911616/PyV-I0_8_400x400.jpg",
-                    className='three columns',
-                    style={
-                        'height': '15%',
-                        'width': '15%',
-                        'float': 'right',
-                        'position': 'relative'},)
-                ], className="row"),   
-        #### 2.Row ####                
-        html.Div([
-                # Infobox, top left
-                html.Div(
-                    children='''
-                    Dash: A web application framework for Python.''',
-                    className='nine columns'),
-                # Dropdown, top right
-                dcc.Dropdown(
-                        id='stock_dropdown',
-                        options=[{'label': df, 'value': df} for df in dataframes],
-                        value='',
-                        className= 'three columns')
-                ], className="row"),
-        #### 3. Row ####
-        html.Div([
-            html.Div([
-                # Graph
-                dcc.Graph(
-                    id='example-graph',
-                    figure={
-                        'data': [
-                            {'x': [1, 2, 3], 'y': [4, 1, 2], 'type': 'bar', 'name': 'SF'},
-                            {'x': [1, 2, 3], 'y': [2, 4, 5], 'type': 'bar', 'name': u'Montréal'},],
-                        'layout': {
-                            'title': 'Graph 1'}
-                            })], 
-                            className= 'twelve columns'),
-            html.Div([
-                # Table
-                dt.DataTable(
-                        id='table',
-                        rows = [{}],
-                        filterable = True,
-                        sortable= True),
-                ], className= 'twelve columns')
-        ], className="row")
-    ], className='ten columns offset-by-one')
-)
-
-@app.callback(
-        Output('table', 'rows'), 
-        [Input('stock_dropdown', 'value')])
-
-def update_table(user_selection):
-    df= get_data_object(user_selection)
-    return df.to_dict('records')
+action_x = pickle.load(open(filedir +'\\action_x.p', 'rb'))
+action_y = pickle.load(open(filedir +'\\action_y.p', 'rb'))
 
 
+train_data = pd.read_csv(filedir + '\\train_data.csv')
+train_data = train_data.transpose()
+data= train_data.rename(index= str, columns={0: 'IBM', 1: 'MSFT', 2: 'QCOM'})
 
-if __name__ == '__main__':
-    app.run_server(debug=True)
+n_stock = data.shape[0]
+b, h, s = action_x
+b_pos, h_pos, s_pos = action_y
+
+shape_size = 30
+for i in range(n_stock):
+#     print(i)
+    x = range(1, data[i:i+1].shape[1]+1)
+    y = data[i:i+1].values.tolist()[0]
+    try:
+        buy = b['buy_{}'.format(i)]
+        hold = h['hold_{}'.format(i)]
+        sell = s['sell_{}'.format(i)]
+        buy_pos = b_pos['buy_pos_{}'.format(i)]
+        hold_pos = h_pos['hold_pos_{}'.format(i)]
+        sell_pos = s_pos['sell_pos_{}'.format(i)]
+    except:
+        break
+    fig = plt.figure(figsize=(20,10))
+    ax = fig.add_subplot(111)
+    ax.plot(x, y, color="grey", linewidth=0.5)
+    ax.scatter(buy, buy_pos,
+               s = shape_size,
+               color = "green",
+               marker = "^")
+    # ax.scatter(hold, hold_pos,
+    #            s = 5,
+    #           color = "gold",
+    #           marker = "_")
+    ax.scatter(sell, sell_pos,
+               s = shape_size,
+               color = "red",
+               marker = "v")
+
+    plt.show()
