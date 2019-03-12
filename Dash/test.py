@@ -1,68 +1,77 @@
-# =============================================================================
-# Dash GUI
-# TODO: 
-# implement Trading markers
-# Model visualization
-# Sharpe
-# Portfolio value
-# =============================================================================
-
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-import dash_table_experiments as dt
-import plotly.graph_objs as go
-import pandas as pd
-import os
-import pickle
-from matplotlib import pyplot as plt
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, Event
 
-# =============================================================================
-# Importing Datasets
-# =============================================================================
-filedir = os.path.abspath('D:\\GitHub\\Projects\\Dash\\Data\\')
+app = dash.Dash()
 
-action_x = pickle.load(open(filedir +'\\action_x.p', 'rb'))
-action_y = pickle.load(open(filedir +'\\action_y.p', 'rb'))
+app.css.append_css({
+    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
+})
 
 
-train_data = pd.read_csv(filedir + '\\train_data.csv')
-train_data = train_data.transpose()
-data= train_data.rename(index= str, columns={0: 'IBM', 1: 'MSFT', 2: 'QCOM'})
+app.layout = html.Div(children=[
+    html.Div(children=[
+    html.H4(children='Example Dash'),
+    
+    
+    html.Div(id='div_row1',children=[
+    
+        # Div Retention
+        html.Div(id='div', children=[
+            html.P("Retention"),
+            html.Button('Default Values', id='default_values'),
+            dcc.Dropdown(
+            id="sel_01",
+            options=[
+                {'label': 'True', 'value': True},
+                {'label': 'False', 'value': False}
 
-n_stock = data.shape[0]
-b, h, s = action_x
-b_pos, h_pos, s_pos = action_y
+            ],
+            value=False,
+            multi=False
+            ),
+            dcc.Dropdown(
+            id="sel_02",
+            options=[
+                {'label': 'True', 'value': True},
+                {'label': 'False', 'value': False}
 
-shape_size = 30
-for i in range(n_stock):
-#     print(i)
-    x = range(1, data[i:i+1].shape[1]+1)
-    y = data[i:i+1].values.tolist()[0]
-    try:
-        buy = b['buy_{}'.format(i)]
-        hold = h['hold_{}'.format(i)]
-        sell = s['sell_{}'.format(i)]
-        buy_pos = b_pos['buy_pos_{}'.format(i)]
-        hold_pos = h_pos['hold_pos_{}'.format(i)]
-        sell_pos = s_pos['sell_pos_{}'.format(i)]
-    except:
-        break
-    fig = plt.figure(figsize=(20,10))
-    ax = fig.add_subplot(111)
-    ax.plot(x, y, color="grey", linewidth=0.5)
-    ax.scatter(buy, buy_pos,
-               s = shape_size,
-               color = "green",
-               marker = "^")
-    # ax.scatter(hold, hold_pos,
-    #            s = 5,
-    #           color = "gold",
-    #           marker = "_")
-    ax.scatter(sell, sell_pos,
-               s = shape_size,
-               color = "red",
-               marker = "v")
+            ],
+            value=False,
+            multi=False
+            ),
+            html.P(id="p1",children=["placeholder"])
+        ], className='six columns')
 
-    plt.show()
+    ]),
+    dcc.Interval(
+        id='interval-component',
+        interval=5*60*1000 # in milliseconds
+    )
+    ]),
+    ])
+
+
+@app.callback(
+    Output(component_id='sel_01', component_property='value'),
+    events=[Event('default_values', 'click')])
+def update():
+    return False
+
+@app.callback(
+    Output(component_id='sel_02', component_property='value'),
+    events=[Event('default_values', 'click')])
+def update():
+    return False
+
+
+@app.callback(
+    Output(component_id='p1', component_property='children'),
+    [Input(component_id='sel_01', component_property='value'),
+    Input(component_id='sel_02', component_property='value')])
+def update(val_1, val_2):
+    return "text: "+str(val_1)+str(val_2)
+
+if __name__ == '__main__':
+    app.run_server(debug=True, host='0.0.0.0', port=5091)
