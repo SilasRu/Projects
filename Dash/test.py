@@ -1,77 +1,122 @@
+import datetime
+from textwrap import dedent as d
 import dash
+from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output, Event
+import pandas as pd
 
-app = dash.Dash()
+df = pd.read_csv(
+    ('https://raw.githubusercontent.com/plotly/'
+     'datasets/master/1962_2006_walmart_store_openings.csv'),
+    parse_dates=[1, 2],
+    infer_datetime_format=True
+)
+future_indices = df['OPENDATE'] > datetime.datetime(year=2050,month=1,day=1)
+df.loc[future_indices, 'OPENDATE'] -= datetime.timedelta(days=365.25*100)
 
-app.css.append_css({
-    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
-})
+app = dash.Dash(__name__)
+app.scripts.config.serve_locally = True
+app.css.config.serve_locally = True
 
+styles = {
+    'pre': {
+        'border': 'thin lightgrey solid',
+        'overflowX': 'scroll'
+    }
+}
 
-app.layout = html.Div(children=[
-    html.Div(children=[
-    html.H4(children='Example Dash'),
-    
-    
-    html.Div(id='div_row1',children=[
-    
-        # Div Retention
-        html.Div(id='div', children=[
-            html.P("Retention"),
-            html.Button('Default Values', id='default_values'),
-            dcc.Dropdown(
-            id="sel_01",
-            options=[
-                {'label': 'True', 'value': True},
-                {'label': 'False', 'value': False}
-
+app.layout = html.Div([
+    dcc.Graph(
+        id='basic-interactions',
+        figure={
+            'data': [
+                {
+                    'x': df['OPENDATE'],
+                    'text': df['STRCITY'],
+                    'customdata': df['storenum'],
+                    'name': 'Open Date',
+                    'type': 'histogram'
+                },
+                {
+                    'x': df['date_super'],
+                    'text': df['STRCITY'],
+                    'customdata': df['storenum'],
+                    'name': 'Super Date',
+                    'type': 'histogram'
+                }
             ],
-            value=False,
-            multi=False
-            ),
-            dcc.Dropdown(
-            id="sel_02",
-            options=[
-                {'label': 'True', 'value': True},
-                {'label': 'False', 'value': False}
+            'layout': {}
+        }
+    ),
 
-            ],
-            value=False,
-            multi=False
-            ),
-            html.P(id="p1",children=["placeholder"])
-        ], className='six columns')
+    html.Div(className='row', children=[
+        html.Div([
+            dcc.Markdown(d("""
+                **Hover Data**
+                Mouse over values in the graph.
+            """)),
+            html.Pre(id='hover-data', style=styles['pre'])
+        ], className='three columns'),
 
-    ]),
-    dcc.Interval(
-        id='interval-component',
-        interval=5*60*1000 # in milliseconds
-    )
-    ]),
+        html.Div([
+            dcc.Markdown(d("""
+                **Click Data**
+                Click on points in the graph.
+            """)),
+            html.Pre(id='click-data', style=styles['pre']),
+        ], className='three columns'),
+
+        html.Div([
+            dcc.Markdown(d("""
+                **Selection Data**
+                Choose the lasso or rectangle tool in the graph's menu
+                bar and then select points in the graph.
+            """)),
+            html.Pre(id='selected-data', style=styles['pre']),
+        ], className='three columns'),
+
+        html.Div([
+            dcc.Markdown(d("""
+                **Zoom and Relayout Data**
+                Click and drag on the graph to zoom or click on the zoom
+                buttons in the graph's menu bar.
+                Clicking on legend items will also fire
+                this event.
+            """)),
+            html.Pre(id='relayout-data', style=styles['pre']),
+        ], className='three columns')
     ])
+])
 
 
 @app.callback(
-    Output(component_id='sel_01', component_property='value'),
-    events=[Event('default_values', 'click')])
-def update():
-    return False
-
-@app.callback(
-    Output(component_id='sel_02', component_property='value'),
-    events=[Event('default_values', 'click')])
-def update():
-    return False
+    Output('hover-data', 'children'),
+    [Input('basic-interactions', 'hoverData')])
+def display_hover_data(hoverData):
+    return json.dumps(hoverData, indent=2)
 
 
 @app.callback(
-    Output(component_id='p1', component_property='children'),
-    [Input(component_id='sel_01', component_property='value'),
-    Input(component_id='sel_02', component_property='value')])
-def update(val_1, val_2):
-    return "text: "+str(val_1)+str(val_2)
+    Output('click-data', 'children'),
+    [Input('basic-interactions', 'clickData')])
+def display_click_data(clickData):
+    return json.dumps(clickData, indent=2)
+
+
+@app.callback(
+    Output('selected-data', 'children'),
+    [Input('basic-interactions', 'selectedData')])
+def display_selected_data(selectedData):
+    return json.dumps(selectedData, indent=2)
+
+
+@app.callback(
+    Output('relayout-data', 'children'),
+    [Input('basic-interactions', 'relayoutData')])
+def display_selected_data(relayoutData):
+    return json.dumps(relayoutData, indent=2)
+
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=5091)
+    app.run_server(debug=True)

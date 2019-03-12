@@ -24,41 +24,22 @@ from itertools import chain
 # =============================================================================
 filedir = os.path.abspath('D:\\GitHub\\Projects\\Dash\\Data\\')
 
+# Stock Data
 IBM_df = pd.read_csv(filedir + '\\daily_IBM.csv')
 MSFT_df = pd.read_csv(filedir + '\\daily_MSFT.csv')
 QCOM_df = pd.read_csv(filedir + '\\daily_QCOM.csv')
 
+# Model Data
 train_data = pd.read_csv(filedir + '\\train_data.csv')
 train_data = train_data.transpose()
 train_data = train_data.rename(index= str, columns={0: 'IBM', 1: 'MSFT', 2: 'QCOM'})
+
 test_data = pd.read_csv(filedir + '\\test_data.csv')
 test_data = test_data.transpose()
 test_data = test_data.rename(index= str, columns={0: 'IBM', 1: 'MSFT', 2: 'QCOM'})
 
-
-portfolio_val_train = pd.read_csv(filedir + '\\portfolio_metrics\\portfolio_val_201903081051_1000_train_dense.csv')
-portfolio_val_train = portfolio_val_train.rename(index=str, columns={'0': 'IBM_ammount','1': 'MSFT_ammount', '2': 'QCOM_ammount', 
-                                              '3': 'Cash', '4': 'Portfolio_val', '5': 'Perc_diff' })
-portfolio_val_test = pd.read_csv(filedir + '\\portfolio_val_test.csv')
-portfolio_val_test = portfolio_val_test.rename(index=str, columns={'0': 'IBM_ammount','1': 'MSFT_ammount', '2': 'QCOM_ammount', 
-                                              '3': 'Cash', '4': 'Portfolio_val', '5': 'Perc_diff' })
-
-# Reading portfolio values in metrics folder
-listOfFiles = os.listdir('Data\\portfolio_metrics')  
-pattern = "*train*.csv"
-portfolio_values = {}  
-for entry in listOfFiles:  
-    if fnmatch.fnmatch(entry, pattern):
-            portfolio_values.update({'{}'.format(entry): entry})
-
-
-action_x = pickle.load(open(filedir +'\\action_x.p', 'rb'))
-action_y = pickle.load(open(filedir +'\\action_y.p', 'rb'))
-b, h, s = action_x
-b_pos, h_pos, s_pos = action_y
-
-
-
+model_data = {'train': train_data,
+             'test': test_data}
 
 dataframes= {'IBM': IBM_df,
              'MSFT': MSFT_df,
@@ -69,12 +50,6 @@ indexes = {'open': 'open',
            'low': 'low',
            'close': 'close',
            'volume': 'volume'}
-
-model_data = {'train': train_data,
-             'test': test_data}
-
-portfolio_val = {'train': portfolio_val_train,
-                 'test': portfolio_val_test}
 
 # =============================================================================
 # Visualization functions
@@ -127,7 +102,6 @@ def action_pos(action_visual, data):
     for i in range(n_stock):
         for j in range(len(b['buy_{}'.format(i)])):
             b_pos['buy_pos_{}'.format(i)].append(data[i:i+1].values.tolist()[0][b['buy_{}'.format(i)][j]])
-    
         for j in range(len(h['hold_{}'.format(i)])):
             h_pos['hold_pos_{}'.format(i)].append(data[i:i+1].values.tolist()[0][h['hold_{}'.format(i)][j]])
     
@@ -151,7 +125,27 @@ def get_model_data(user_selection):
     return model_data[user_selection]
 
 def get_portfolio_val(user_selection):
-    return portfolio_val[user_selection]
+    portfolio = pd.read_csv(filedir + '\\portfolio_metrics\\{}'.format(user_selection))
+    portfolio = portfolio.rename(index=str, columns={'0': 'IBM_ammount','1': 'MSFT_ammount', '2': 'QCOM_ammount', 
+                                              '3': 'Cash', '4': 'Portfolio_val', '5': 'Perc_diff' })
+    return portfolio
+
+def get_available_portfolios(data_type):
+    # Reading portfolio values in metrics folder
+    listOfFiles = os.listdir('Data\\portfolio_metrics')
+    pattern = "portfolio_val*{}*.csv".format(data_type)
+    available_portfolios = {}  
+    for entry in listOfFiles:  
+        if fnmatch.fnmatch(entry, pattern):
+               available_portfolios.update({'{}'.format(entry): entry})
+    return available_portfolios
+
+def get_all_portfolios(user_selection):
+    filename = user_selection.replace('portfolio_val_', '\\portfolio_metrics\\')
+    filename = filename.replace('.csv', '.p')
+    portfolio = pickle.load(open(filedir +  filename, "rb" ))
+    return portfolio
+
 
 # =============================================================================
 # Layout
@@ -160,6 +154,7 @@ app = dash.Dash()
 
 # Boostrap CSS. for layout structure
 app.css.append_css({'external_url': 'https://codepen.io/amyoshino/pen/jzXypZ.css'})
+#app.css.append_css({'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'})
 
 app.layout = html.Div(
     # 12 Columns (offset by one)
@@ -237,7 +232,7 @@ app.layout = html.Div(
 # =============================================================================
 # 2. Tab
 # =============================================================================
-             dcc.Tab(label='Performance Metrics', children=[
+             dcc.Tab(label='Performance Metrics', children=[    
                     #### 3.Row ####
                     html.Div([
                             dcc.RadioItems(
@@ -251,29 +246,34 @@ app.layout = html.Div(
                         dcc.Checklist(
                                 id= 'trading_markers_checkbox',
                                 options=[
-                                    {'label': 'Trading markers', 'value': 'checked'}],
+                                    {'label': 'Trading markers', 'value': 'checked', 'disabled':False}],
                                 values=''
                             )], className= 'two columns'),
+                    # Portfolio dropdown                    
                     html.Div([
-                            # Infobox, top right
-                            dcc.Dropdown(
-                                id='portfolio_val_dropdown',
-                                options=[{'label': column, 'value': column} for column in portfolio_values],
+                            dcc.Dropdown(id='portfolio_val_dropdown',
                                 className='four columns',
-                                style={'vertical-align': 'right'})
+                                style={'vertical-align': 'right'}),                        
                             ], className="row",style={'marginTop': 20}),
                     #### 4. Row ####
                     html.Div([
                         html.Div([
-                            # Graph
+                            # Train test datasets
                             dcc.Graph(id='train_test_graph')
                                 ],className= 'twelve columns')           
                             ], className="row"),
                     html.Div([
                         html.Div([
-                            dcc.Graph(id= 'portfolio_graph')
+                            # Portfolio value last episode
+                            dcc.Graph(id= 'portfolio_graph_last')
                                 ],className = 'twelve columns')  
-                            ], className = 'row')
+                            ], className = 'row'),
+                    html.Div([
+                        html.Div([
+                            # Portfolio value all episodes
+                            dcc.Graph(id= 'portfolio_graph_all')
+                                ],className = 'six columns')  
+                            ], className = 'row')                    
                         ]),
 # =============================================================================
 # 3. Tab
@@ -308,51 +308,93 @@ def update_stock_graph(stock_selection, column_selection):
     return {'data': 
                 [{'x': df.timestamp, 'y': column, 'type': 'line',
                   'name': stock_selection}]}
-    
-@app.callback(
-        Output('train_test_graph', 'figure'),
-        [Input('train_test_button', 'value'), Input('trading_markers_checkbox', 'values')])
-def update_train_test_button(button_selection, checkbox_selection):
-    df = get_model_data(button_selection)
-    n_stock = df.shape[1]
-    portfolio = get_portfolio_val(button_selection)
-    
-    # Data and Marker traces
-    model_data =  [{'x': df.index, 'y': df[i],
-                    'type': 'line', 'name': i}for i in df.columns]
-    buy_markers = [{'x': b['buy_{}'.format(i)],'y': b_pos['buy_pos_{}'.format(i)],'type': 'scatter',
-                    'mode': 'markers','marker':{'symbol':'triangle-up', 'size':10, 'color': 'green'},
-                    'name': df.columns[i]}for i in range(n_stock)]
-    sell_markers= [{'x': s['sell_{}'.format(i)],'y': s_pos['sell_pos_{}'.format(i)],'type': 'scatter',
-                    'mode': 'markers','marker':{'symbol':'triangle-down', 'size':10, 'color': 'red'},
-                    'name': df.columns[i]}for i in range(n_stock)]
-    ammount_of_stock = [{'x': portfolio.index, 'y': portfolio[column],
-                         'type': 'line', 'name': column, 'visible':'legendonly'}for column in portfolio.columns[0:3]]
-    
-    # Checkbox selection and corresponding plot
-    if checkbox_selection==['checked'] and button_selection=='test':
-        data = list(chain.from_iterable((model_data, ammount_of_stock, buy_markers, sell_markers)))
-        return {'data': data, 'layout': {'title': '<b>{} datasets</b>'.format(button_selection), 'legend': {'orientation':'h'},
-                                         'xaxis':{'range': (0,len(df))}}}
-    else:
-        data = list(chain.from_iterable((model_data, ammount_of_stock)))
-        return {'data':data, 'layout': {'title': '<b>{} datasets</b>'.format(button_selection), 'legend': {'orientation':'h'}}}
 
 @app.callback(
-        Output('portfolio_graph', 'figure'),
+        Output('portfolio_val_dropdown', 'options'),
         [Input('train_test_button', 'value')])
-def update_portfolio_graph(button_selection):
-        portfolio = get_portfolio_val(button_selection)
-        # Data traces
-        portfolio_value = [{'x': portfolio.index, 'y': portfolio['Portfolio_val'],
-                        'type': 'line', 'name': 'Portfolio_value'}] 
-        data = portfolio_value
-        return {'data': data, 'layout': {'title': '<b>Portfolio value</b>','legend': {'orientation':'h', 'name': 'test'},
-                                        'shapes':[{'type':'line', 'x0': 0, 'y0': 20000,
-                                                   'x1': len(portfolio.index), 'y1': 20000,
-                                                   'line':{'color': 'red','dash': 'dashdot'}
-                                                 }]
-                                         }
-                }
+def update_portfolio_dropdown(button_selection):
+    available_portfolios = get_available_portfolios(button_selection)
+    return [{'label': portfolio, 'value': portfolio} for portfolio in available_portfolios]
+
+
+@app.callback(
+        Output('train_test_graph', 'figure'),
+        [Input('train_test_button', 'value'), 
+         Input('trading_markers_checkbox', 'values'), 
+         Input('portfolio_val_dropdown', 'value')])
+def update_portfolio(button_selection, checkbox_selection, dropdown_selection):
+    df = get_model_data(button_selection)
+    end_portfolio = get_portfolio_val(dropdown_selection)
+    end_portfolio_val = np.array(end_portfolio)
+    
+    # Data traces
+    model_data =  [{'x': df.index, 'y': df[i],
+                    'type': 'line', 'name': i}for i in df.columns]
+    ammount_of_stock = [{'x': end_portfolio.index, 'y': end_portfolio[column],
+                         'type': 'line', 'name': column, 'visible':'legendonly'}for column in end_portfolio.columns[0:3]]
+    
+    # Checkbox selection and corresponding plot
+    if checkbox_selection==['checked']:
+        try:
+            action_x = action_visual(end_portfolio_val)
+            action_y = action_pos(action_x, df.transpose())
+            b, h, s = action_x
+            b_pos, h_pos, s_pos = action_y    
+            n_stock = df.shape[1]
+            
+            # Marker traces
+            buy_markers = [{'x': b['buy_{}'.format(i)],'y': b_pos['buy_pos_{}'.format(i)],'type': 'scatter',
+                        'mode': 'markers','marker':{'symbol':'triangle-up', 'size':10, 'color': 'green'},
+                        'name': df.columns[i]}for i in range(n_stock)]
+            sell_markers= [{'x': s['sell_{}'.format(i)],'y': s_pos['sell_pos_{}'.format(i)],'type': 'scatter',
+                        'mode': 'markers','marker':{'symbol':'triangle-down', 'size':10, 'color': 'red'},
+                        'name': df.columns[i]}for i in range(n_stock)]
+    
+            data = list(chain.from_iterable((model_data, ammount_of_stock, buy_markers, sell_markers)))
+            return {'data': data, 'layout': {'title': '{} datasets'.format(button_selection.capitalize()), 'legend': {'orientation':'h'},
+                                             'xaxis':{'range': (0,len(df))}}}
+        except:
+            print ('No test portfolio available')
+
+    else:
+        data = list(chain.from_iterable((model_data, ammount_of_stock)))
+        return {'data':data, 'layout': {'title': '{} datasets'.format(button_selection.capitalize()), 
+                                        'legend': {'orientation':'h'}, 'margin': {'t':50}}}
+
+
+@app.callback(
+        Output('portfolio_graph_last', 'figure'),
+        [Input('portfolio_val_dropdown', 'value')])
+def update_last_portfolio_graph(dropdown):
+    portfolio = get_portfolio_val(dropdown)
+    
+    # Data traces
+    portfolio_value = [{'x': portfolio.index, 'y': portfolio['Portfolio_val'],
+                    'type': 'line', 'name': 'Portfolio_value'}] 
+    data = portfolio_value
+    return {'data': data, 'layout': {'title': 'Portfolio value of last episode','legend': {'orientation':'h', 'name': 'test'},
+                                    'shapes':[{'type':'line', 'x0': 0, 'y0': 20000,
+                                               'x1': len(portfolio.index), 'y1': 20000,
+                                               'line':{'color': 'red','dash': 'dashdot'}}],
+                                    'margin': {'t':30}}}
+
+@app.callback(
+        Output('portfolio_graph_all', 'figure'),
+        [Input('portfolio_val_dropdown', 'value')])
+def update_all_portfolios_graph(dropdown_selection):
+    all_portfolios = get_all_portfolios(dropdown_selection)
+    all_portfolio_val = all_portfolios[0]
+    all_sharpe_ratios = all_portfolios[1]
+    
+    #Data traces
+    all_portfolio_values = [{'x': all_portfolio_val, 'orientation': 'v', 
+                             'marker': {'line':{'color':'black', 'width': 1}},
+                             'type': 'histogram', 'name': 'Portfolio_value'}] 
+
+    data = all_portfolio_values
+    return {'data':data, 'layout': {'title': 'Portfolio values over all episodes', 
+                                        'legend': {'orientation':'h'}, 'margin': {'t':50}}}
+
+
 if __name__ == '__main__':
     app.run_server(debug=True)
