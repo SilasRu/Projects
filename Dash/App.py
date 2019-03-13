@@ -1,24 +1,20 @@
 # =============================================================================
 # Dash GUI
 # TODO: 
-# implement Trading markers for Training set
-# Model visualization
-# Sharpe
-# Portfolio value
+# NNet loss visualization (Tab3)
+# 
 # =============================================================================
 
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table_experiments as dt
-import plotly.graph_objs as go
 import pandas as pd
 import os, fnmatch
 import pickle
 import numpy as np
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 from itertools import chain
-
 # =============================================================================
 # Importing Datasets
 # =============================================================================
@@ -38,6 +34,7 @@ test_data = pd.read_csv(filedir + '\\test_data.csv')
 test_data = test_data.transpose()
 test_data = test_data.rename(index= str, columns={0: 'IBM', 1: 'MSFT', 2: 'QCOM'})
 
+# Indexes for dropdown reference
 model_data = {'train': train_data,
              'test': test_data}
 
@@ -51,8 +48,6 @@ indexes = {'open': 'open',
            'close': 'close',
            'volume': 'volume'}
 
-colors = {"background": "#F3F6FA", "background_div": "white"}
-
 # =============================================================================
 # Visualization functions
 # =============================================================================
@@ -61,35 +56,31 @@ def action_visual(portfolio_val):
     n_time = portfolio_val.shape[0]
     n_stock = portfolio_val.shape[1]-3
     
-    # create empty lists inside dictionaries
+    # Create empty lists inside dictionaries
     a = {'actions_{}'.format(i):[] for i in range(n_stock)}
     b = {'buy_{}'.format(i):[] for i in range(n_stock)}
     h = {'hold_{}'.format(i):[] for i in range(n_stock)}
-    s = {'sell_{}'.format(i):[] for i in range(n_stock)}
-        
+    s = {'sell_{}'.format(i):[] for i in range(n_stock)} 
 
     for i in range(n_stock):
         stock = m[:,i]
         for j in range(1,n_time):            
-            # filling actions list with action integers (2=buy, 1=hold, 0=sell)
+            # Filling actions list with action integers (2=buy, 1=hold, 0=sell)
             a['actions_{}'.format(i)] = np.append(a['actions_{}'.format(i)], stock[j]-stock[j-1])
-            
         a['actions_{}'.format(i)] = np.array(a['actions_{}'.format(i)])    
         a['actions_{}'.format(i)][a['actions_{}'.format(i)]>0] = 2
         a['actions_{}'.format(i)][a['actions_{}'.format(i)]==0] = 1
         a['actions_{}'.format(i)][a['actions_{}'.format(i)]<0] = 0
-            
-        # getting x-axis position of actions with enumerate
+        # Getting x-axis position of actions with enumerate
         for g, j in enumerate(a['actions_{}'.format(i)]):
             if j == 2:
                 b['buy_{}'.format(i)].append(g)
             elif j == 1:
                 h['hold_{}'.format(i)].append(g)
             elif j == 0:
-                s['sell_{}'.format(i)].append(g)
-                
+                s['sell_{}'.format(i)].append(g)      
     return b, h, s
-            
+
 
 def action_pos(action_visual, data):
     b, h, s = action_visual
@@ -100,31 +91,29 @@ def action_pos(action_visual, data):
     h_pos = {'hold_pos_{}'.format(i):[] for i in range(n_stock)}
     s_pos = {'sell_pos_{}'.format(i):[] for i in range(n_stock)}
     
-    
     for i in range(n_stock):
         for j in range(len(b['buy_{}'.format(i)])):
             b_pos['buy_pos_{}'.format(i)].append(data[i:i+1].values.tolist()[0][b['buy_{}'.format(i)][j]])
         for j in range(len(h['hold_{}'.format(i)])):
             h_pos['hold_pos_{}'.format(i)].append(data[i:i+1].values.tolist()[0][h['hold_{}'.format(i)][j]])
-    
         for j in range(len(s['sell_{}'.format(i)])):
             s_pos['sell_pos_{}'.format(i)].append(data[i:i+1].values.tolist()[0][s['sell_{}'.format(i)][j]])
-                
     return b_pos, h_pos, s_pos
     
-
-
 # =============================================================================
 # Callback functions
 # =============================================================================
 def get_data_object(user_selection):
     return dataframes[user_selection]
 
+
 def get_column(dataframe, index):
     return dataframe[index]
 
+
 def get_model_data(user_selection):
     return model_data[user_selection]
+
 
 def get_portfolio_val(user_selection):
     portfolio = pd.read_csv(filedir + '\\portfolio_metrics\\{}'.format(user_selection))
@@ -132,7 +121,6 @@ def get_portfolio_val(user_selection):
                                               '3': 'Cash', '4': 'Portfolio_val', '5': 'Perc_diff' })
     return portfolio
 
-dropdown = ['portfolio_val_201903081051_1000_train_dense.csv', 'portfolio_val_201903121102_10_train_dense.csv']
 
 def get_available_portfolios(data_type):
     # Reading portfolio values in metrics folder
@@ -144,21 +132,22 @@ def get_available_portfolios(data_type):
                available_portfolios.update({'{}'.format(entry): entry})
     return available_portfolios
 
+
 def get_all_portfolios(user_selection):
     filename = user_selection.replace('portfolio_val_', '\\portfolio_metrics\\')
     filename = filename.replace('.csv', '.p')
     portfolio = pickle.load(open(filedir +  filename, "rb" ))
     return portfolio
 
-
 # =============================================================================
+#    
 # Layout
+#
 # =============================================================================
 app = dash.Dash()
-
 # Boostrap CSS. for layout structure
 app.css.append_css({'external_url': 'https://codepen.io/amyoshino/pen/jzXypZ.css'})
-#app.css.append_css({'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'})
+# app.css.append_css({'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'})
 
 app.layout = html.Div(
     # 12 Columns (offset by one)
@@ -185,6 +174,7 @@ app.layout = html.Div(
                 ], className="row"),
         #### 2.Row #### 
         html.Div([
+            # Infobox, top left
             html.Div(
                 children = 'Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.',
                     className='six columns')
@@ -195,7 +185,7 @@ app.layout = html.Div(
 # 1. Tab
 # =============================================================================
                 dcc.Tab(label='Data Visualization',children=[
-                    #### 3.Row ####                
+                    #### 1.Row ####                
                     html.Div([
                             # Stock Dropdown, top left
                             dcc.Dropdown(
@@ -213,18 +203,17 @@ app.layout = html.Div(
                             html.Div(
                                 children= 'Select the stock and index for visualization',
                                 className='six columns',
-                                style={
-                                    'float': 'right'})
+                                style={'float': 'right'})
                             ], className="row",style={'marginTop': 30}),
-                    #### 4. Row ####
+                    #### 2. Row ####
                     html.Div([
                         html.Div([
-                            # Graph
+                            # Stock Graph
                             dcc.Graph(
                                 id='stock_plots') 
                                 ],className= 'twelve columns'),
                         html.Div([
-                            # Table
+                            # Stock Table
                             dt.DataTable(
                                     id='table',
                                     rows = [{}],
@@ -237,52 +226,59 @@ app.layout = html.Div(
 # 2. Tab
 # =============================================================================
              dcc.Tab(label='Performance Metrics', children=[
-                    #### 3.Row ####
+                    #### 1.Row ####
                     html.Div([
-                            html.Button('Training',id= 'train_button', n_clicks_timestamp='0',className='two columns'),
-                            html.Button('Test',id= 'test_button', n_clicks_timestamp='0',className='two columns'),
-                                    
-                            dcc.Checklist(
-                                    id= 'trading_markers_checkbox',
-                                    options=[
-                                        {'label': 'Trading markers', 'value': 'checked', 'disabled':True}],
-                                    values='',className='two columns'),
-                                
+                        # Train and Test button
+                        html.Button('Training',
+                                    id= 'train_button', 
+                                    n_clicks_timestamp='0',
+                                    className='two columns'),
+                        html.Button('Test',
+                                    id= 'test_button', 
+                                    n_clicks_timestamp='0',
+                                    className='two columns'),
+                        # Checkbox for trading markers
+                        dcc.Checklist(
+                                id= 'trading_markers_checkbox',
+                                options=[
+                                    {'label': 'Trading markers', 
+                                     'value': 'checked', 
+                                     'disabled':True}],
+                                values='',
+                                className='two columns'),
                     # Portfolio dropdown                    
-                            dcc.Dropdown(id='portfolio_val_dropdown', multi=True, 
-                                         value= 'default',
-                                         style={'vertical-align': 'right'}, 
-                                         className='six columns')                        
+                        dcc.Dropdown(id='portfolio_val_dropdown', 
+                                     multi=True, 
+                                     value= 'default',
+                                     style={'vertical-align': 'right'}, 
+                                     className='six columns')                        
                             ], className="row",style={'marginTop': 30}),
-                    #### 4. Row ####
+                    #### 2.Row ####                    
                     html.Div([
-                        html.Div([
-                            # Train test datasets
-                            dcc.Graph(id='train_test_graph')
-                                ],className= 'twelve columns')
+                        # Train test graph
+                        dcc.Graph(id='train_test_graph')
                             ], className="row"),
+                    #### 3.Row ####                    
                     html.Div([
-                        html.Div([
-                            # Portfolio value all episodes
-                            dcc.Graph(id= 'portfolio_graph_all',
-                                      className = 'six columns'),
-                            dcc.Graph(id= 'sharpe_graph_all',
-                                      className = 'six columns')])  
-                            ], className = 'row'),                             
+                        # Portfolio value and sharpe all episodes
+                        dcc.Graph(id= 'portfolio_graph_all',
+                                  className = 'six columns'),
+                        dcc.Graph(id= 'sharpe_graph_all',
+                                  className = 'six columns')  
+                            ], className = 'row'),
+                    #### 4.Row ####                                                 
                     html.Div([
-                        html.Div([
                             # Portfolio value last episode
-                            dcc.Graph(id= 'portfolio_graph_last')
-                                ],className = 'twelve columns')  
+                        dcc.Graph(id= 'portfolio_graph_last')
                             ], className = 'row')
-                        ]),
+                    ]),
 # =============================================================================
 # 3. Tab
 # =============================================================================
              dcc.Tab(label='Information', children=[
                 html.Div([
                     html.H1(
-                        children='Reinforcement Learning'),
+                        children='Under construction'),
                         ])
                     ])
                 ])
@@ -290,7 +286,12 @@ app.layout = html.Div(
     ], className='ten columns offset-by-one')
 )
 # =============================================================================
+#
 # Callbacks
+#
+# =============================================================================
+# =============================================================================
+# 1. Tab Callbacks 
 # =============================================================================
 @app.callback(
         Output('table', 'rows'), 
@@ -298,6 +299,7 @@ app.layout = html.Div(
 def update_table(user_selection):
     df= get_data_object(user_selection)
     return df.to_dict('records')
+
 
 @app.callback(
         Output('stock_plots', 'figure'),
@@ -309,14 +311,22 @@ def update_stock_graph(stock_selection, column_selection):
     return {'data': 
                 [{'x': df.timestamp, 'y': column, 'type': 'line',
                   'name': stock_selection}]}
-
+# =============================================================================
+# 2. Tab Callbacks 
+# =============================================================================
 @app.callback(
         Output('trading_markers_checkbox', 'options'),
         [Input('portfolio_val_dropdown', 'value')])
 def release_checkbox(dropdown_selection):
     if dropdown_selection == 'default':
-        return [{'label': 'Trading markers', 'value': 'unchecked', 'disabled':True}]
-    else: return [{'label': 'Trading markers', 'value': 'checked', 'disabled':False}]
+        return [{'label': 'Trading markers', 
+                 'value': 'unchecked', 
+                 'disabled':True}]
+    else: 
+        return [{'label': 'Trading markers', 
+                 'value': 'checked', 
+                 'disabled':False}]
+
 
 @app.callback(
         Output('portfolio_val_dropdown', 'options'),
@@ -327,7 +337,9 @@ def update_portfolio_dropdown_train(train_button, test_button):
         available_portfolios = get_available_portfolios('train')
     elif int(test_button)>int(train_button):
         available_portfolios = get_available_portfolios('test')
-    return [{'label': portfolio, 'value': portfolio} for portfolio in available_portfolios]
+    return [{'label': portfolio, 
+             'value': portfolio} for portfolio in available_portfolios]
+
 
 @app.callback(
         Output('portfolio_val_dropdown', 'value'),
@@ -344,6 +356,7 @@ def default_portfolio_dropdown(train_button, test_button):
          Input('trading_markers_checkbox', 'values'), 
          Input('portfolio_val_dropdown', 'value')])
 def update_portfolio(train_button,test_button, checkbox_selection, dropdown_selection):
+    # Get model data according to button value
     if int(train_button)> int(test_button):
         df = get_model_data('train')
         button_selection = 'train'
@@ -355,10 +368,17 @@ def update_portfolio(train_button,test_button, checkbox_selection, dropdown_sele
     end_portfolio_val = np.array(end_portfolio)
     
     # Data traces
-    model_data =  [{'x': df.index, 'y': df[i],
-                    'type': 'line', 'name': i,'line':{'width':1.2}}for i in df.columns]
-    ammount_of_stock = [{'x': end_portfolio.index, 'y': end_portfolio[column],
-                         'type': 'line', 'line':{'width':1}, 'name': column, 'visible':'legendonly'}for column in end_portfolio.columns[0:3]]
+    model_data =  [{'x': df.index, 
+                    'y': df[i],
+                    'type': 'line',
+                    'line':{'width':1.2},
+                    'name': i}for i in df.columns]
+    ammount_of_stock = [{'x': end_portfolio.index, 
+                         'y': end_portfolio[column],
+                         'type': 'line', 
+                         'line':{'width':1}, 
+                         'name': column, 
+                         'visible':'legendonly'}for column in end_portfolio.columns[0:3]]
     
     # Checkbox selection and corresponding plot
     if checkbox_selection==['checked']:
@@ -370,26 +390,45 @@ def update_portfolio(train_button,test_button, checkbox_selection, dropdown_sele
             n_stock = df.shape[1]
             
             # Marker traces
-            buy_markers = [{'x': b['buy_{}'.format(i)],'y': b_pos['buy_pos_{}'.format(i)],'type': 'scatter',
-                        'mode': 'markers','marker':{'symbol':'triangle-up', 'size':10, 'color': 'green'},
-                        'name': df.columns[i]}for i in range(n_stock)]
-            sell_markers= [{'x': s['sell_{}'.format(i)],'y': s_pos['sell_pos_{}'.format(i)],'type': 'scatter',
-                        'mode': 'markers','marker':{'symbol':'triangle-down', 'size':10, 'color': 'red'},
-                        'name': df.columns[i]}for i in range(n_stock)]
+            buy_markers = [{'x': b['buy_{}'.format(i)],
+                            'y': b_pos['buy_pos_{}'.format(i)],
+                            'type': 'scatter',
+                            'mode': 'markers',
+                            'marker':{'symbol':'triangle-up', 
+                                      'size':10, 
+                                      'color': 'green'},
+                            'name': df.columns[i]}for i in range(n_stock)]
     
-            data = list(chain.from_iterable((model_data, ammount_of_stock, buy_markers, sell_markers)))
-            return {'data': data, 'layout': {'title': '{} datasets'.format(button_selection.capitalize()), 'legend': {'orientation':'h'},
-                                             'xaxis':{'range': (0,len(df))}}}
+            sell_markers= [{'x': s['sell_{}'.format(i)],
+                            'y': s_pos['sell_pos_{}'.format(i)],
+                            'type': 'scatter',
+                            'mode': 'markers',
+                            'marker':{'symbol':'triangle-down', 
+                                      'size':10, 
+                                      'color': 'red'},
+                            'name': df.columns[i]}for i in range(n_stock)]
+    
+            data = list(chain.from_iterable((model_data, 
+                                             ammount_of_stock, 
+                                             buy_markers, 
+                                             sell_markers)))
+            return {'data': data, 
+                    'layout': {'title': '{} datasets'.format(button_selection.capitalize()), 
+                               'legend': {'orientation':'h'},
+                               'xaxis':{'range': (0,len(df))}}}
         except:
             print ('No test portfolio available')
 
     else:
         try:
-           data = list(chain.from_iterable((model_data, ammount_of_stock))) 
+           data = list(chain.from_iterable((model_data, 
+                                            ammount_of_stock))) 
         except:
             data = model_data       
-        return {'data':data, 'layout': {'title': '{} datasets'.format(button_selection.capitalize()), 
-                                        'legend': {'orientation':'h'}, 'margin': {'t':70}}}
+        return {'data':data, 
+                'layout': {'title': '{} datasets'.format(button_selection.capitalize()), 
+                           'legend': {'orientation':'h'}, 
+                           'margin': {'t':70}}}
 
 
 @app.callback(
@@ -397,44 +436,60 @@ def update_portfolio(train_button,test_button, checkbox_selection, dropdown_sele
         [Input('portfolio_val_dropdown', 'value')])
 def update_last_portfolio_graph(dropdown):
     # Data traces
-    portfolio_value = [{'x': get_portfolio_val(portfolio).index, 'y': get_portfolio_val(portfolio)['Portfolio_val'],
-                    'type': 'line', 'name': portfolio, 'line':{'width':1.2}}for portfolio in dropdown] 
+    portfolio_value = [{'x': get_portfolio_val(portfolio).index, 
+                        'y': get_portfolio_val(portfolio)['Portfolio_val'],
+                        'type': 'line',
+                        'line':{'width':1.2},
+                        'name': portfolio}for portfolio in dropdown] 
     data = portfolio_value
-    return {'data': data, 'layout': {'title': 'Portfolio value of last episode','legend': {'orientation':'h', 'name': 'test'},
-                                    'shapes':[{'type':'line', 'x0': 0, 'y0': 20000,
-                                               'x1': len(get_portfolio_val(dropdown[0]).index), 'y1': 20000,
-                                               'line':{'color': 'red','dash': 'dashdot', 'width': 1.2}}],
-                                    'margin': {'t':30}}}
+    return {'data': data, 
+            'layout': {'title': 'Portfolio value of last episode',
+                       'legend': {'orientation':'h'},
+                       'shapes':[{'type':'line', 
+                                  'x0': 0, 
+                                  'y0': 20000,
+                                  'x1': len(get_portfolio_val(dropdown[0]).index), 
+                                  'y1': 20000,
+                                  'line':{'color': 'red',
+                                          'dash': 'dashdot', 
+                                          'width': 1.2}}],
+                        'margin': {'t':30}}}
+
 
 @app.callback(
         Output('portfolio_graph_all', 'figure'),
         [Input('portfolio_val_dropdown', 'value')])
 def update_all_portfolios_graph(dropdown_selection):
     #Data traces
-    all_portfolio_values = [{'x': get_all_portfolios(portfolio)[0], 'orientation': 'v', 
-                             'marker': {'line':{'color':'black', 'width': 1}},
-                             'type': 'histogram', 'name': portfolio }for portfolio in dropdown_selection] 
-
+    all_portfolio_values = [{'x': get_all_portfolios(portfolio)[0], 
+                             'orientation': 'v', 
+                             'marker': {'line':{'color':'black', 
+                                                'width': 1}},
+                             'type': 'histogram', 
+                             'name': portfolio }for portfolio in dropdown_selection] 
     data = all_portfolio_values
-    return {'data':data, 'layout': {'title': 'Portfolio values over all episodes', 
-                                        'legend': {'orientation':'h'}, 'margin': {'t':50}}}
+    return {'data':data, 
+            'layout': {'title': 'Portfolio values over all episodes', 
+                       'legend': {'orientation':'h'}, 
+                       'margin': {'t':50}}}
+
 
 @app.callback(
         Output('sharpe_graph_all', 'figure'),
         [Input('portfolio_val_dropdown', 'value')])
 def update_all_sharpe_graph(dropdown_selection):
-    all_portfolios = get_all_portfolios(dropdown_selection[0])
-    all_sharpe_ratios = all_portfolios[1]
-    
     #Data traces
     all_sharpe_ratios = [{'y': get_all_portfolios(portfolio)[1], 
-                             'type': 'line', 'name': portfolio }for portfolio in dropdown_selection] 
-
+                          'type': 'line', 
+                          'name': portfolio }for portfolio in dropdown_selection] 
     data = all_sharpe_ratios
-    return {'data':data, 'layout': {'title': 'Sharpe ratios over all episodes',
-                                        'legend': {'orientation':'h'}, 'margin': {'t':50}}}
+    return {'data':data, 
+            'layout': {'title': 'Sharpe ratios over all episodes',
+                       'legend': {'orientation':'h'}, 
+                       'margin': {'t':50}}}
 
-
-
+# =============================================================================
+# Run App
+# =============================================================================
 if __name__ == '__main__':
     app.run_server(debug=True)
