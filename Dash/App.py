@@ -116,16 +116,17 @@ def get_model_data(user_selection):
 
 
 def get_portfolio_val(user_selection):
-    portfolio = pd.read_csv(filedir + '\\portfolio_metrics\\{}'.format(user_selection))
-    portfolio = portfolio.rename(index=str, columns={'0': 'IBM_ammount','1': 'MSFT_ammount', '2': 'QCOM_ammount', 
-                                              '3': 'Cash', '4': 'Portfolio_val', '5': 'Perc_diff' })
+    portfolio = pickle.load(open(filedir + '\\portfolio_metrics\\{}'.format(user_selection), 'rb'))
+    portfolio = pd.DataFrame(portfolio)
+    portfolio = portfolio.rename(index=str, columns={0: 'IBM_ammount',1: 'MSFT_ammount', 2: 'QCOM_ammount', 
+                                              3: 'Cash', 4: 'Portfolio_val', 5: 'Perc_diff' })
     return portfolio
 
 
 def get_available_portfolios(data_type):
     # Reading portfolio values in metrics folder
     listOfFiles = os.listdir('Data\\portfolio_metrics')
-    pattern = "portfolio_val*{}*.csv".format(data_type)
+    pattern = "portfolio_val*{}*.p".format(data_type)
     available_portfolios = {}  
     for entry in listOfFiles:  
         if fnmatch.fnmatch(entry, pattern):
@@ -135,7 +136,6 @@ def get_available_portfolios(data_type):
 
 def get_all_portfolios(user_selection):
     filename = user_selection.replace('portfolio_val_', '\\portfolio_metrics\\')
-    filename = filename.replace('.csv', '.p')
     portfolio = pickle.load(open(filedir +  filename, "rb" ))
     return portfolio
 
